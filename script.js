@@ -17,6 +17,8 @@ const state = {
   rodovia: null,
   km: "",
   metros: "",
+  categoria: null, // letra da categoria de ocorrência (A, B, C...)
+  ocorrencia: null, // código da ocorrência (ex: 'L-08')
 };
 
 function resetState() {
@@ -34,6 +36,8 @@ function resetState() {
     rodovia: null,
     km: "",
     metros: "",
+    categoria: null,
+    ocorrencia: null,
   });
   render();
 }
@@ -69,13 +73,22 @@ function getRodoviasFor(batalhao, companhia, pelotao, tipo) {
   );
 }
 
+function getOcorrenciasFor(letra) {
+  return OCORRENCIAS_DATA.filter((o) => o[1] === letra);
+}
+function getOcorrenciaDescricao(codigo) {
+  const found = OCORRENCIAS_DATA.find((o) => o[0] === codigo);
+  return found ? found[2] : "";
+}
+
 function nextStepId(id) {
   switch (id) {
     case "welcome": return "q_vulto";
     case "q_vulto": return state.vulto === "sim" ? "share_location" : "welcome";
     case "share_location": return "unidade";
     case "unidade": return "local_fatos";
-    case "local_fatos": return "result";
+    case "local_fatos": return "ocorrencia";
+    case "ocorrencia": return "result";
     default: return null;
   }
 }
@@ -425,6 +438,103 @@ function render() {
     return;
   }
 
+  if (s === "ocorrencia") {
+    app.innerHTML = "";
+
+    const ocorrencias = state.categoria ? getOcorrenciasFor(state.categoria) : [];
+
+    app.appendChild(el(`
+      <div>
+        <span class="step-tag">TIPO DA OCORRÊNCIA</span>
+        <h2>Tipo da ocorrência</h2>
+        <div class="field">
+          <label>Categoria</label>
+          <div class="choice-row categoria-row" id="categoria-row">
+            ${OCORRENCIA_CATEGORIAS.map(
+              ([letra, titulo]) => `<button class="btn-choice" data-v="${letra}">${letra} – ${titulo}</button>`
+            ).join("")}
+          </div>
+        </div>
+        <div class="field">
+          <label>Ocorrência</label>
+          <input
+            type="text"
+            id="ocorrencia-search"
+            autocomplete="off"
+            placeholder="${state.categoria ? "Buscar ocorrência..." : "Selecione a categoria primeiro"}"
+            ${state.categoria ? "" : "disabled"}
+          />
+          <div class="choice-row ocorrencia-list" id="ocorrencia-row">
+            ${ocorrencias
+              .map(
+                ([codigo, , descricao]) =>
+                  `<button class="btn-choice" data-v="${codigo}">${codigo} — ${descricao}</button>`
+              )
+              .join("")}
+          </div>
+        </div>
+        <div class="nav-row">
+          <button class="btn-secondary" id="btn-back">Voltar</button>
+          <span class="spacer"></span>
+          <button class="btn-primary" id="btn-next" disabled>Próximo</button>
+        </div>
+      </div>
+    `));
+
+    const categoriaRow = document.getElementById("categoria-row");
+    const ocorrenciaRow = document.getElementById("ocorrencia-row");
+    const ocorrenciaSearch = document.getElementById("ocorrencia-search");
+    const nextBtn = document.getElementById("btn-next");
+
+    function markSelectedCategoria() {
+      categoriaRow.querySelectorAll("[data-v]").forEach((b) => {
+        b.classList.toggle("selected", b.dataset.v === state.categoria);
+      });
+    }
+    function markSelectedOcorrencia() {
+      ocorrenciaRow.querySelectorAll("[data-v]").forEach((b) => {
+        b.classList.toggle("selected", b.dataset.v === state.ocorrencia);
+      });
+    }
+    markSelectedCategoria();
+    markSelectedOcorrencia();
+
+    function validate() {
+      nextBtn.disabled = !(state.categoria && state.ocorrencia);
+    }
+    validate();
+
+    categoriaRow.querySelectorAll("[data-v]").forEach((b) =>
+      b.addEventListener("click", () => {
+        if (state.categoria === b.dataset.v) return;
+        state.categoria = b.dataset.v;
+        state.ocorrencia = null;
+        render();
+      })
+    );
+
+    ocorrenciaRow.querySelectorAll("[data-v]").forEach((b) =>
+      b.addEventListener("click", () => {
+        state.ocorrencia = b.dataset.v;
+        markSelectedOcorrencia();
+        validate();
+      })
+    );
+
+    if (ocorrenciaSearch) {
+      ocorrenciaSearch.addEventListener("input", () => {
+        const q = ocorrenciaSearch.value.trim().toLowerCase();
+        ocorrenciaRow.querySelectorAll("[data-v]").forEach((b) => {
+          b.classList.toggle("hidden", q !== "" && !b.textContent.toLowerCase().includes(q));
+        });
+      });
+    }
+
+    document.getElementById("btn-back").addEventListener("click", goBack);
+    nextBtn.addEventListener("click", goNext);
+    return;
+  }
+
   if (s === "result") {
     const locationLine = state.locationStatus === "ok"
       ? `${state.latitude.toFixed(6)}, ${state.longitude.toFixed(6)}`
@@ -440,6 +550,7 @@ function render() {
       `RODOVIA: ${state.rodovia}`,
       `QUILÔMETRO: ${state.km}`,
       `METROS: ${state.metros}`,
+      `TIPO DA OCORRÊNCIA: ${state.ocorrencia} — ${getOcorrenciaDescricao(state.ocorrencia)}`,
     ].join("\n");
 
     app.innerHTML = "";

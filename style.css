@@ -285,6 +285,28 @@ input[type="text"]:disabled {
   display: none;
 }
 
+.categoria-row,
+.ocorrencia-list {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.categoria-row .btn-choice,
+.ocorrencia-list .btn-choice {
+  width: 100%;
+  text-align: left;
+}
+
+.ocorrencia-list {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.ocorrencia-list .btn-choice.hidden {
+  display: none;
+}
+
 input:focus {
   outline: none;
   border-color: var(--yellow-dark);
