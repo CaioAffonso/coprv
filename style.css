@@ -252,7 +252,8 @@ label {
   text-align: center;
 }
 
-input[type="number"] {
+input[type="number"],
+input[type="text"] {
   width: 100%;
   padding: 11px 12px;
   border: 1px solid var(--gray-light);
@@ -261,6 +262,27 @@ input[type="number"] {
   font-family: inherit;
   color: var(--black);
   background: var(--white);
+}
+
+input[type="text"]:disabled {
+  background: var(--gray-light);
+  color: var(--gray);
+}
+
+.rodovia-list {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.rodovia-list .btn-choice {
+  min-width: 84px;
+  flex: 0 1 auto;
+  padding: 9px 14px;
+}
+
+.rodovia-list .btn-choice.hidden {
+  display: none;
 }
 
 input:focus {

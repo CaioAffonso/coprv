@@ -1,5 +1,8 @@
 const app = document.getElementById("app");
 
+const TIPO_LABELS = { SP: "SP", A: "SPA", D: "SPD", I: "SPI", M: "Marginal" };
+const TIPO_ORDER = ["SP", "A", "D", "I", "M"];
+
 const state = {
   step: "welcome",
   history: [],
@@ -10,7 +13,8 @@ const state = {
   batalhao: null,
   companhia: null,
   pelotao: null,
-  tipo: null, // 'SP' | 'SPA' | 'SPD' | 'SPI'
+  tipo: null, // 'SP' | 'A' | 'D' | 'I' | 'M' (código bruto da malha)
+  rodovia: null,
   km: "",
   metros: "",
 };
@@ -27,10 +31,42 @@ function resetState() {
     companhia: null,
     pelotao: null,
     tipo: null,
+    rodovia: null,
     km: "",
     metros: "",
   });
   render();
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+}
+
+function getBatalhoes() {
+  return uniqueSorted(RODOVIAS_DATA.map((r) => r[0]));
+}
+function getCompanhias(batalhao) {
+  return uniqueSorted(RODOVIAS_DATA.filter((r) => r[0] === batalhao).map((r) => r[1]));
+}
+function getPelotoes(batalhao, companhia) {
+  return uniqueSorted(
+    RODOVIAS_DATA.filter((r) => r[0] === batalhao && r[1] === companhia).map((r) => r[2])
+  );
+}
+function getTiposFor(batalhao, companhia, pelotao) {
+  const present = new Set(
+    RODOVIAS_DATA.filter((r) => r[0] === batalhao && r[1] === companhia && r[2] === pelotao).map(
+      (r) => r[3]
+    )
+  );
+  return TIPO_ORDER.filter((t) => present.has(t));
+}
+function getRodoviasFor(batalhao, companhia, pelotao, tipo) {
+  return uniqueSorted(
+    RODOVIAS_DATA.filter(
+      (r) => r[0] === batalhao && r[1] === companhia && r[2] === pelotao && r[3] === tipo
+    ).map((r) => r[4])
+  );
 }
 
 function nextStepId(id) {
@@ -181,6 +217,11 @@ function render() {
 
   if (s === "unidade") {
     app.innerHTML = "";
+
+    const batalhoes = getBatalhoes();
+    const companhias = state.batalhao ? getCompanhias(state.batalhao) : [];
+    const pelotoes = state.batalhao && state.companhia ? getPelotoes(state.batalhao, state.companhia) : [];
+
     app.appendChild(el(`
       <div>
         <span class="step-tag">LOCAL DOS FATOS</span>
@@ -188,29 +229,21 @@ function render() {
         <div class="field">
           <label>Batalhão</label>
           <div class="choice-row" id="btl-row">
-            <button class="btn-choice" data-v="1º BPRv">1º BPRv</button>
-            <button class="btn-choice" data-v="2º BPRv">2º BPRv</button>
-            <button class="btn-choice" data-v="3º BPRv">3º BPRv</button>
-            <button class="btn-choice" data-v="4º BPRv">4º BPRv</button>
-            <button class="btn-choice" data-v="5º BPRv">5º BPRv</button>
-            <button class="btn-choice" data-v="6º BPRv">6º BPRv</button>
+            ${batalhoes.map((b) => `<button class="btn-choice" data-v="${b}">${b}</button>`).join("")}
           </div>
         </div>
         <div class="field">
           <label>Companhia</label>
           <div class="choice-row" id="cia-row">
-            <button class="btn-choice" data-v="1ª Cia">1ª Cia</button>
-            <button class="btn-choice" data-v="2ª Cia">2ª Cia</button>
-            <button class="btn-choice" data-v="3ª Cia">3ª Cia</button>
-            <button class="btn-choice" data-v="4ª Cia">4ª Cia</button>
+            ${companhias.map((c) => `<button class="btn-choice" data-v="${c}">${c}</button>`).join("")
+              || `<p class="hint">Selecione o batalhão primeiro</p>`}
           </div>
         </div>
         <div class="field">
           <label>Pelotão</label>
           <div class="choice-row" id="pel-row">
-            <button class="btn-choice" data-v="1º Pel">1º Pel</button>
-            <button class="btn-choice" data-v="2º Pel">2º Pel</button>
-            <button class="btn-choice" data-v="3º Pel">3º Pel</button>
+            ${pelotoes.map((p) => `<button class="btn-choice" data-v="${p}">${p}</button>`).join("")
+              || `<p class="hint">Selecione a companhia primeiro</p>`}
           </div>
         </div>
         <div class="nav-row">
@@ -231,21 +264,39 @@ function render() {
         b.classList.toggle("selected", b.dataset.v === state[field]);
       });
     }
+    markSelected(btlRow, "batalhao");
+    markSelected(ciaRow, "companhia");
+    markSelected(pelRow, "pelotao");
+
     function validate() {
       nextBtn.disabled = !(state.batalhao && state.companhia && state.pelotao);
     }
-
-    [[btlRow, "batalhao"], [ciaRow, "companhia"], [pelRow, "pelotao"]].forEach(([row, field]) => {
-      markSelected(row, field);
-      row.querySelectorAll("[data-v]").forEach((b) =>
-        b.addEventListener("click", () => {
-          state[field] = b.dataset.v;
-          markSelected(row, field);
-          validate();
-        })
-      );
-    });
     validate();
+
+    btlRow.querySelectorAll("[data-v]").forEach((b) =>
+      b.addEventListener("click", () => {
+        if (state.batalhao === b.dataset.v) return;
+        state.batalhao = b.dataset.v;
+        state.companhia = null;
+        state.pelotao = null;
+        render();
+      })
+    );
+    ciaRow.querySelectorAll("[data-v]").forEach((b) =>
+      b.addEventListener("click", () => {
+        if (state.companhia === b.dataset.v) return;
+        state.companhia = b.dataset.v;
+        state.pelotao = null;
+        render();
+      })
+    );
+    pelRow.querySelectorAll("[data-v]").forEach((b) =>
+      b.addEventListener("click", () => {
+        state.pelotao = b.dataset.v;
+        markSelected(pelRow, "pelotao");
+        validate();
+      })
+    );
 
     document.getElementById("btn-back").addEventListener("click", goBack);
     nextBtn.addEventListener("click", goNext);
@@ -254,6 +305,12 @@ function render() {
 
   if (s === "local_fatos") {
     app.innerHTML = "";
+
+    const tipos = getTiposFor(state.batalhao, state.companhia, state.pelotao);
+    const rodovias = state.tipo
+      ? getRodoviasFor(state.batalhao, state.companhia, state.pelotao, state.tipo)
+      : [];
+
     app.appendChild(el(`
       <div>
         <span class="step-tag">LOCAL DOS FATOS</span>
@@ -261,13 +318,22 @@ function render() {
         <div class="field">
           <label>Tipo</label>
           <div class="choice-row" id="tipo-row">
-            <button class="btn-choice" data-v="SP">SP</button>
-            <button class="btn-choice" data-v="SPA">SPA</button>
-            <button class="btn-choice" data-v="SPD">SPD</button>
-            <button class="btn-choice" data-v="SPI">SPI</button>
-            <button class="btn-choice" data-v="Marginal">Marginal</button>
+            ${tipos.map((t) => `<button class="btn-choice" data-v="${t}">${TIPO_LABELS[t]}</button>`).join("")}
           </div>
           <p class="hint">Formatação das rodovias: SP: 3 números — SPA, SPI e SPD: 3 números/3 números</p>
+        </div>
+        <div class="field">
+          <label>Rodovia</label>
+          <input
+            type="text"
+            id="rodovia-search"
+            autocomplete="off"
+            placeholder="${state.tipo ? "Buscar rodovia..." : "Selecione o tipo primeiro"}"
+            ${state.tipo ? "" : "disabled"}
+          />
+          <div class="choice-row rodovia-list" id="rodovia-row">
+            ${rodovias.map((r) => `<button class="btn-choice" data-v="${r}">${r}</button>`).join("")}
+          </div>
         </div>
         <div class="field-row">
           <div class="field">
@@ -293,26 +359,57 @@ function render() {
     const metrosInput = document.getElementById("input-metros");
     const nextBtn = document.getElementById("btn-next");
     const tipoRow = document.getElementById("tipo-row");
+    const rodoviaRow = document.getElementById("rodovia-row");
+    const rodoviaSearch = document.getElementById("rodovia-search");
 
     function markSelectedTipo() {
       tipoRow.querySelectorAll("[data-v]").forEach((b) => {
         b.classList.toggle("selected", b.dataset.v === state.tipo);
       });
     }
+    function markSelectedRodovia() {
+      rodoviaRow.querySelectorAll("[data-v]").forEach((b) => {
+        b.classList.toggle("selected", b.dataset.v === state.rodovia);
+      });
+    }
     markSelectedTipo();
+    markSelectedRodovia();
 
     function validate() {
-      nextBtn.disabled = !(state.tipo && kmInput.value.trim() !== "" && metrosInput.value.trim() !== "");
+      nextBtn.disabled = !(
+        state.tipo &&
+        state.rodovia &&
+        kmInput.value.trim() !== "" &&
+        metrosInput.value.trim() !== ""
+      );
     }
     validate();
 
     tipoRow.querySelectorAll("[data-v]").forEach((b) =>
       b.addEventListener("click", () => {
+        if (state.tipo === b.dataset.v) return;
         state.tipo = b.dataset.v;
-        markSelectedTipo();
+        state.rodovia = null;
+        render();
+      })
+    );
+
+    rodoviaRow.querySelectorAll("[data-v]").forEach((b) =>
+      b.addEventListener("click", () => {
+        state.rodovia = b.dataset.v;
+        markSelectedRodovia();
         validate();
       })
     );
+
+    if (rodoviaSearch) {
+      rodoviaSearch.addEventListener("input", () => {
+        const q = rodoviaSearch.value.trim().toLowerCase();
+        rodoviaRow.querySelectorAll("[data-v]").forEach((b) => {
+          b.classList.toggle("hidden", q !== "" && !b.dataset.v.toLowerCase().includes(q));
+        });
+      });
+    }
 
     kmInput.addEventListener("input", () => { validate(); });
     kmInput.addEventListener("blur", () => { kmInput.value = clampKm(kmInput.value); validate(); });
@@ -339,7 +436,8 @@ function render() {
       `BATALHÃO: ${state.batalhao}`,
       `COMPANHIA: ${state.companhia}`,
       `PELOTÃO: ${state.pelotao}`,
-      `TIPO: ${state.tipo}`,
+      `TIPO: ${TIPO_LABELS[state.tipo]}`,
+      `RODOVIA: ${state.rodovia}`,
       `QUILÔMETRO: ${state.km}`,
       `METROS: ${state.metros}`,
     ].join("\n");
