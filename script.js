@@ -109,11 +109,6 @@ function render() {
     app.innerHTML = "";
     app.appendChild(el(`
       <div>
-        <h1 class="hero-title">Iniciar nova transmissão de dados</h1>
-        <p class="lead">
-          Assistente de registro de ocorrência para transmissão de dados
-          do Centro de Operações Rodoviárias.
-        </p>
         <div class="nav-row">
           <button class="btn-primary btn-hero" id="btn-start">Iniciar nova transmissão de dados</button>
         </div>
@@ -169,7 +164,7 @@ function render() {
         <div class="nav-row">
           <button class="btn-secondary" id="btn-back">Voltar</button>
           <span class="spacer"></span>
-          <button class="btn-primary" id="btn-share">Compartilhar localização</button>
+          <button class="btn-primary" id="btn-share">Compartilhar localização atual</button>
         </div>
         <div class="nav-row">
           <span class="spacer"></span>
@@ -189,7 +184,7 @@ function render() {
     app.appendChild(el(`
       <div>
         <span class="step-tag">LOCAL DOS FATOS</span>
-        <h2>Unidade</h2>
+        <h2>Local dos fatos</h2>
         <div class="field">
           <label>Batalhão</label>
           <div class="choice-row" id="btl-row">
@@ -262,7 +257,7 @@ function render() {
     app.appendChild(el(`
       <div>
         <span class="step-tag">LOCAL DOS FATOS</span>
-        <h2>Local dos fatos</h2>
+        <h2>Rodovia</h2>
         <div class="field">
           <label>Tipo</label>
           <div class="choice-row" id="tipo-row">
@@ -270,16 +265,20 @@ function render() {
             <button class="btn-choice" data-v="SPA">SPA</button>
             <button class="btn-choice" data-v="SPD">SPD</button>
             <button class="btn-choice" data-v="SPI">SPI</button>
+            <button class="btn-choice" data-v="Marginal">Marginal</button>
           </div>
+          <p class="hint">Formatação das rodovias: SP: 3 números — SPA, SPI e SPD: 3 números/3 números</p>
         </div>
         <div class="field-row">
           <div class="field">
-            <label>Quilômetro</label>
-            <input type="number" id="input-km" min="0" max="999" step="1" value="${state.km}" placeholder="0-999" />
+            <label>Quilômetros</label>
+            <input type="number" id="input-km" min="0" max="999" step="1" value="${state.km}" placeholder="000" />
+            <p class="hint">(3 números inteiros)</p>
           </div>
           <div class="field">
             <label>Metros</label>
-            <input type="number" id="input-metros" min="0" max="999" step="1" value="${state.metros}" placeholder="0-999" />
+            <input type="number" id="input-metros" min="0" max="999" step="1" value="${state.metros}" placeholder="000" />
+            <p class="hint">(3 números inteiros)</p>
           </div>
         </div>
         <div class="nav-row">
