@@ -288,6 +288,7 @@ input[type="text"]:disabled {
 .categoria-row,
 .ocorrencia-list {
   flex-direction: column;
+  flex-wrap: nowrap;
   align-items: stretch;
 }
 
@@ -298,6 +299,7 @@ input[type="text"]:disabled {
 }
 
 .ocorrencia-list {
+  flex-wrap: nowrap;
   max-height: 260px;
   overflow-y: auto;
   margin-top: 10px;
