@@ -19,6 +19,8 @@ const state = {
   metros: "",
   categoria: null, // letra da categoria de ocorrência (A, B, C...)
   ocorrencia: null, // código da ocorrência (ex: 'L-08')
+  osTopico: null, // id do tópico da OS CIPM-002/100/25 (ex: '3.1')
+  osSubtopico: null, // código do subtópico (ex: '3.1.1') ou o próprio id do tópico quando sem subdivisão
 };
 
 function resetState() {
@@ -38,6 +40,8 @@ function resetState() {
     metros: "",
     categoria: null,
     ocorrencia: null,
+    osTopico: null,
+    osSubtopico: null,
   });
   render();
 }
@@ -81,9 +85,24 @@ function getOcorrenciaDescricao(codigo) {
   return found ? found[2] : "";
 }
 
+function getOsTopicoTitulo(id) {
+  const found = OS_TOPICOS.find((t) => t[0] === id);
+  return found ? found[1] : "";
+}
+function getSubtopicosFor(topicoId) {
+  return OS_SUBTOPICOS.filter((s) => s[1] === topicoId);
+}
+function getOsSubtopicoDescricao(codigo) {
+  if (OS_TOPICO_SEM_SUBDIVISAO[codigo]) return OS_TOPICO_SEM_SUBDIVISAO[codigo];
+  const found = OS_SUBTOPICOS.find((s) => s[0] === codigo);
+  return found ? found[2] : "";
+}
+
 function nextStepId(id) {
   switch (id) {
-    case "welcome": return "q_vulto";
+    case "welcome": return "os_topico";
+    case "os_topico": return "os_subtopico";
+    case "os_subtopico": return "q_vulto";
     case "q_vulto": return state.vulto === "sim" ? "share_location" : "welcome";
     case "share_location": return "unidade";
     case "unidade": return "local_fatos";
@@ -167,11 +186,93 @@ function render() {
     return;
   }
 
+  if (s === "os_topico") {
+    app.innerHTML = "";
+
+    app.appendChild(el(`
+      <div>
+        <span class="step-tag">ETAPA 1</span>
+        <h2>A ocorrência atende a algum tópico da OS nº CIPM-002/100/25?</h2>
+        <div class="field">
+          <div class="choice-row categoria-row" id="topico-row">
+            ${OS_TOPICOS.map(
+              ([id, titulo]) => `<button class="btn-choice" data-v="${id}">${id} — ${titulo}</button>`
+            ).join("")}
+          </div>
+        </div>
+        <div class="nav-row">
+          <button class="btn-secondary" id="btn-back">Voltar</button>
+        </div>
+      </div>
+    `));
+
+    const topicoRow = document.getElementById("topico-row");
+    topicoRow.querySelectorAll("[data-v]").forEach((b) =>
+      b.addEventListener("click", () => {
+        state.osTopico = b.dataset.v;
+        state.osSubtopico = null;
+        goNext();
+      })
+    );
+
+    document.getElementById("btn-back").addEventListener("click", goBack);
+    return;
+  }
+
+  if (s === "os_subtopico") {
+    app.innerHTML = "";
+
+    const subtopicos = getSubtopicosFor(state.osTopico);
+    const semSubdivisao = OS_TOPICO_SEM_SUBDIVISAO[state.osTopico];
+
+    app.appendChild(el(`
+      <div>
+        <span class="step-tag">ETAPA 1</span>
+        <h2>Subtópico — ${state.osTopico} ${getOsTopicoTitulo(state.osTopico)}</h2>
+        ${semSubdivisao
+          ? `<div class="info-box">${semSubdivisao}</div>`
+          : `<div class="field">
+              <div class="choice-row ocorrencia-list" id="subtopico-row">
+                ${subtopicos
+                  .map(
+                    ([codigo, , descricao]) =>
+                      `<button class="btn-choice" data-v="${codigo}">${codigo} — ${descricao}</button>`
+                  )
+                  .join("")}
+              </div>
+            </div>`
+        }
+        <div class="nav-row">
+          <button class="btn-secondary" id="btn-back">Voltar</button>
+          ${semSubdivisao ? `<span class="spacer"></span><button class="btn-primary" id="btn-next">Próximo</button>` : ""}
+        </div>
+      </div>
+    `));
+
+    document.getElementById("btn-back").addEventListener("click", goBack);
+
+    if (semSubdivisao) {
+      document.getElementById("btn-next").addEventListener("click", () => {
+        state.osSubtopico = state.osTopico;
+        goNext();
+      });
+    } else {
+      const subtopicoRow = document.getElementById("subtopico-row");
+      subtopicoRow.querySelectorAll("[data-v]").forEach((b) =>
+        b.addEventListener("click", () => {
+          state.osSubtopico = b.dataset.v;
+          goNext();
+        })
+      );
+    }
+    return;
+  }
+
   if (s === "q_vulto") {
     app.innerHTML = "";
     app.appendChild(el(`
       <div>
-        <span class="step-tag">ETAPA 1</span>
+        <span class="step-tag">ETAPA 2</span>
         <h2>Patrulheiro, você está em uma ocorrência de vulto?</h2>
         <div class="choice-row">
           <button class="btn-sim" id="btn-sim">Sim</button>
@@ -551,6 +652,8 @@ function render() {
       `QUILÔMETRO: ${state.km}`,
       `METROS: ${state.metros}`,
       `TIPO DA OCORRÊNCIA: ${state.ocorrencia} — ${getOcorrenciaDescricao(state.ocorrencia)}`,
+      `TÓPICO OS CIPM-002/100/25: ${state.osTopico} — ${getOsTopicoTitulo(state.osTopico)}`,
+      `SUBTÓPICO: ${state.osSubtopico} — ${getOsSubtopicoDescricao(state.osSubtopico)}`,
     ].join("\n");
 
     app.innerHTML = "";
